@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roadworks Checker</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self'">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:        #0d0f12;
+      --surface:   #14171c;
+      --surface2:  #1c2029;
+      --border:    #252932;
+      --text:      #e8eaf0;
+      --muted:     #6b7280;
+      --amber:     #f59e0b;
+      --red:       #ef4444;
+      --green:     #22c55e;
+      --blue:      #3b82f6;
+      --font-disp: 'Bebas Neue', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Noise texture overlay ───────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.5;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      position: relative; z-index: 1;
+      border-bottom: 1px solid var(--border);
+      padding: 28px 40px 22px;
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 16px;
+    }
+    .header-left { display: flex; align-items: flex-end; gap: 18px; }
+    .header-icon {
+      font-size: 2.4rem; line-height: 1;
+      animation: pulse-icon 3s ease-in-out infinite;
+    }
+    @keyframes pulse-icon {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.08); }
+    }
+    h1 {
+      font-family: var(--font-disp);
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      letter-spacing: 0.04em;
+      line-height: 1;
+      color: var(--text);
+    }
+    h1 span { color: var(--amber); }
+    .tagline {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .check-all-btn {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--amber);
+      color: #0d0f12;
+      border: none; cursor: pointer;
+      font-family: var(--font-disp);
+      font-size: 1.25rem;
+      letter-spacing: 0.08em;
+      padding: 14px 28px;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+      transition: background 0.15s, transform 0.15s;
+      flex-shrink: 0;
+    }
+    .check-all-btn:hover { background: #fbbf24; transform: scale(1.03); }
+    .check-all-btn:active { transform: scale(0.97); }
+    .check-all-btn.loading { background: var(--surface2); color: var(--muted); pointer-events: none; }
+    .check-all-btn svg { width: 18px; height: 18px; }
+
+    /* ── Main layout ─────────────────────────────────────────────────────── */
+    main {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto;
+      padding: 36px 24px 80px;
+    }
+
+    /* ── Section label ───────────────────────────────────────────────────── */
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Route grid ──────────────────────────────────────────────────────── */
+    .route-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    /* ── Route card ──────────────────────────────────────────────────────── */
+    .route-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--card-colour, var(--blue));
+      padding: 22px;
+      transition: border-color 0.2s, transform 0.2s;
+      animation: card-in 0.4s ease backwards;
+      position: relative; overflow: hidden;
+    }
+    .route-card:hover { transform: translateY(-2px); }
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .card-title-group { display: flex; align-items: center; gap: 10px; }
+    .card-icon { font-size: 1.5rem; }
+    .card-name {
+      font-family: var(--font-disp);
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+    }
+    .card-badge {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      padding: 3px 8px;
+      background: var(--surface2);
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .card-badge.has-works { background: #451a1a; color: var(--red); }
+    .card-badge.clear { background: #14261e; color: var(--green); }
+
+    .waypoints {
+      display: flex; flex-direction: column; gap: 4px;
+      margin-bottom: 16px;
+    }
+    .waypoint {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .waypoint-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--card-colour, var(--blue));
+      flex-shrink: 0;
+    }
+    .waypoint-line {
+      width: 1px; height: 10px;
+      background: var(--border);
+      margin-left: 2.5px;
+    }
+
+    .check-btn {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-disp);
+      font-size: 1.1rem;
+      letter-spacing: 0.1em;
+      padding: 12px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .check-btn:hover {
+      background: var(--card-colour, var(--blue));
+      border-color: var(--card-colour, var(--blue));
+      color: #fff;
+    }
+    .check-btn:active { opacity: 0.8; }
+    .check-btn.loading {
+      pointer-events: none; color: var(--muted);
+      border-color: var(--border);
+      background: var(--surface2);
+    }
+    .check-btn .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--muted);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .last-checked {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 8px;
+      min-height: 14px;
+    }
+
+    /* ── Results panel ────────────────────────────────────────────────────── */
+    .results-panel {
+      display: none;
+      animation: panel-in 0.35s ease;
+    }
+    .results-panel.visible { display: block; }
+    @keyframes panel-in {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      margin-bottom: 20px;
+    }
+    .results-title {
+      font-family: var(--font-disp);
+      font-size: 1.8rem;
+      letter-spacing: 0.04em;
+    }
+    .results-title .route-name { color: var(--amber); }
+    .results-meta {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+
+    /* ── Summary chips ────────────────────────────────────────────────────── */
+    .summary-chips {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .chip {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 6px 14px;
+      border: 1px solid;
+    }
+    .chip-count {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    .chip.high   { color: var(--red);   border-color: #7f1d1d; background: #1f0a0a; }
+    .chip.medium { color: var(--amber); border-color: #78350f; background: #1c1209; }
+    .chip.low    { color: var(--green); border-color: #14532d; background: #0a1a10; }
+    .chip.clear  { color: var(--green); border-color: #14532d; background: #0a1a10; }
+
+    /* ── Works list ──────────────────────────────────────────────────────── */
+    .works-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .work-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid;
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0 14px;
+      animation: item-in 0.3s ease backwards;
+    }
+    .work-item.high   { border-left-color: var(--red); }
+    .work-item.medium { border-left-color: var(--amber); }
+    .work-item.low    { border-left-color: var(--green); }
+    @keyframes item-in {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .work-severity {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      height: fit-content;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+    .work-item.high   .work-severity { background: #451a1a; color: var(--red); }
+    .work-item.medium .work-severity { background: #451f00; color: var(--amber); }
+    .work-item.low    .work-severity { background: #14261e; color: var(--green); }
+
+    .work-body {}
+    .work-road {
+      font-family: var(--font-disp);
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .work-desc {
+      font-size: 0.83rem;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: 8px;
+    }
+    .work-meta {
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .work-meta-item {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--muted);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .work-meta-item span { color: var(--text); }
+
+    /* ── No works banner ─────────────────────────────────────────────────── */
+    .all-clear {
+      background: #0a1a10;
+      border: 1px solid #14532d;
+      padding: 28px;
+      text-align: center;
+    }
+    .all-clear-icon { font-size: 2.4rem; margin-bottom: 10px; }
+    .all-clear-title {
+      font-family: var(--font-disp);
+      font-size: 1.8rem;
+      color: var(--green);
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .all-clear-sub { font-size: 0.85rem; color: var(--muted); }
+
+    /* ── Alert toast ─────────────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      z-index: 999;
+      display: flex; flex-direction: column; gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--amber);
+      padding: 14px 18px;
+      max-width: 340px;
+      animation: toast-in 0.3s ease;
+      pointer-events: all;
+    }
+    .toast.error { border-left-color: var(--red); }
+    .toast.success { border-left-color: var(--green); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .toast-title {
+      font-family: var(--font-disp);
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      margin-bottom: 3px;
+    }
+    .toast-body { font-size: 0.78rem; color: var(--muted); }
+
+    /* ── Divider ─────────────────────────────────────────────────────────── */
+    .divider { height: 1px; background: var(--border); margin: 40px 0 32px; }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      header { padding: 20px 18px; flex-wrap: wrap; }
+      .check-all-btn { width: 100%; justify-content: center; }
+      main { padding: 24px 14px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="header-icon">🚧</div>
+    <div>
+      <div class="tagline">UK Route Monitor</div>
+      <h1>ROAD<span>WORKS</span></h1>
+    </div>
+  </div>
+  <button class="check-all-btn" id="check-all-btn" onclick="checkAll()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+    </svg>
+    CHECK ALL ROUTES
+  </button>
+</header>
+
+<main>
+  <!-- Route cards -->
+  <div class="section-label" id="routes-label">Saved Routes</div>
+  <div class="route-grid" id="route-grid">
+    <div style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem;padding:20px">
+      Loading routes…
+    </div>
+  </div>
+
+  <!-- Results panel (shown after check) -->
+  <div id="results-panel" class="results-panel">
+    <div class="divider"></div>
+    <div class="section-label">Latest Results</div>
+    <div id="results-inner"></div>
+  </div>
+</main>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let savedRoutes = [];
+  const routeStates = {}; // routeId → { lastChecked, result }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  async function init() {
+    try {
+      const res = await fetch('/api/routes');
+      savedRoutes = await res.json();
+      renderRouteCards();
+    } catch (e) {
+      showToast('Could not load routes', e.message, 'error');
+    }
+  }
+
+  // ── Render route cards ─────────────────────────────────────────────────────
+  function renderRouteCards() {
+    const grid = document.getElementById('route-grid');
+    grid.innerHTML = '';
+    savedRoutes.forEach((route, idx) => {
+      const card = createCard(route, idx);
+      grid.appendChild(card);
+    });
+  }
+
+  function createCard(route, idx) {
+    const card = document.createElement('div');
+    card.className = 'route-card';
+    card.id = `card-${route.id}`;
+    card.style.cssText = `--card-colour:${route.colour};animation-delay:${idx * 0.07}s`;
+
+    const waypointHtml = route.waypoints.map((wp, i) => `
+      ${i > 0 ? '<div class="waypoint-line"></div>' : ''}
+      <div class="waypoint">
+        <div class="waypoint-dot"></div>
+        <span>${wp.label || `${wp.lat.toFixed(3)}, ${wp.lng.toFixed(3)}`}</span>
+      </div>
+    `).join('');
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon">${route.icon}</span>
+          <span class="card-name">${route.name}</span>
+        </div>
+        <span class="card-badge" id="badge-${route.id}">${route.waypoints.length} STOPS</span>
+      </div>
+      <div class="waypoints">${waypointHtml}</div>
+      <button class="check-btn" id="btn-${route.id}" onclick="checkRoute('${route.id}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        CHECK THIS ROUTE
+      </button>
+      <div class="last-checked" id="meta-${route.id}"></div>
+    `;
+    return card;
+  }
+
+  // ── Check single route ─────────────────────────────────────────────────────
+  async function checkRoute(routeId) {
+    const btn = document.getElementById(`btn-${routeId}`);
+    const badge = document.getElementById(`badge-${routeId}`);
+    const meta = document.getElementById(`meta-${routeId}`);
+
+    btn.classList.add('loading');
+    btn.innerHTML = '<div class="spinner"></div> CHECKING…';
+
+    try {
+      const res = await fetch(`/api/check/${routeId}`);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+
+      routeStates[routeId] = { lastChecked: new Date(), result: data };
+
+      // Update badge
+      badge.className = 'card-badge ' + (data.total > 0 ? 'has-works' : 'clear');
+      badge.textContent = data.total > 0 ? `${data.total} WORKS` : 'ALL CLEAR';
+
+      meta.textContent = `Last checked: ${new Date().toLocaleTimeString('en-GB')}`;
+
+      // Toast notification
+      if (data.high > 0) {
+        showToast(`⚠️ ${data.routeName}`,
+          `${data.high} HIGH severity works on your route!`, 'warning');
+      } else if (data.total > 0) {
+        showToast(`🚧 ${data.routeName}`,
+          `${data.total} roadworks found (${data.medium} medium, ${data.low} low)`, 'warning');
+      } else {
+        showToast(`✅ ${data.routeName}`, 'Route is clear — no roadworks found', 'success');
+      }
+
+      renderResults([data]);
+
+    } catch (e) {
+      showToast('Check failed', e.message, 'error');
+    } finally {
+      btn.classList.remove('loading');
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        CHECK THIS ROUTE`;
+    }
+  }
+
+  // ── Check all routes ───────────────────────────────────────────────────────
+  async function checkAll() {
+    const btn = document.getElementById('check-all-btn');
+    btn.classList.add('loading');
+    btn.textContent = 'CHECKING ALL…';
+
+    // Kick off all checks
+    const promises = savedRoutes.map(r => checkRoute(r.id));
+    await Promise.allSettled(promises);
+
+    btn.classList.remove('loading');
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      CHECK ALL ROUTES`;
+  }
+
+  // ── Render results panel ───────────────────────────────────────────────────
+  function renderResults(results) {
+    const panel = document.getElementById('results-panel');
+    const inner = document.getElementById('results-inner');
+    panel.classList.add('visible');
+
+    inner.innerHTML = results.map(data => {
+      const route = savedRoutes.find(r => r.id === data.routeId);
+      const colour = route?.colour || '#3b82f6';
+      const checkedAt = new Date(data.checkedAt).toLocaleTimeString('en-GB', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+
+      if (data.total === 0) {
+        return `
+          <div class="results-header">
+            <div class="results-title">
+              ${route?.icon || '🗺️'} <span class="route-name">${data.routeName}</span>
+            </div>
+            <div class="results-meta">Checked at ${checkedAt}</div>
+          </div>
+          <div class="all-clear">
+            <div class="all-clear-icon">✅</div>
+            <div class="all-clear-title">ALL CLEAR</div>
+            <div class="all-clear-sub">No roadworks found on this route right now.</div>
+          </div>`;
+      }
+
+      const chips = `
+        <div class="summary-chips">
+          ${data.high   ? `<div class="chip high">  <span class="chip-count">${data.high}</span>   HIGH</div>` : ''}
+          ${data.medium ? `<div class="chip medium"><span class="chip-count">${data.medium}</span> MEDIUM</div>` : ''}
+          ${data.low    ? `<div class="chip low">   <span class="chip-count">${data.low}</span>    LOW</div>` : ''}
+        </div>`;
+
+      const workItems = data.works.map((w, i) => {
+        const start = w.startDate ? new Date(w.startDate).toLocaleDateString('en-GB') : '—';
+        const end   = w.endDate   ? new Date(w.endDate).toLocaleDateString('en-GB')   : '—';
+        return `
+          <div class="work-item ${w.severity}" style="animation-delay:${i * 0.05}s">
+            <div><span class="work-severity">${w.severity}</span></div>
+            <div class="work-body">
+              <div class="work-road">${w.road}</div>
+              <div class="work-desc">${w.description}</div>
+              <div class="work-meta">
+                <div class="work-meta-item">📅 <span>${start} → ${end}</span></div>
+                <div class="work-meta-item">🏷️ <span>${w.category}</span></div>
+                <div class="work-meta-item">📡 <span>${w.source}</span></div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="results-header">
+          <div class="results-title">
+            ${route?.icon || '🗺️'} <span class="route-name">${data.routeName}</span>
+          </div>
+          <div class="results-meta">Checked at ${checkedAt} · ${data.total} works found</div>
+        </div>
+        ${chips}
+        <div class="works-list">${workItems}</div>`;
+    }).join('<div class="divider"></div>');
+
+    // Scroll to results
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  function showToast(title, body, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'error' ? 'error' : type === 'success' ? 'success' : ''}`;
+    toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-body">${body}</div>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(20px)';
+      toast.style.transition = 'all 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 4500);
+  }
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  init();
+</script>
+</body>
+</html>
