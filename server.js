@@ -11,18 +11,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-
-// ── Content-Security-Policy ────────────────────────────────────────────────────
-app.use((req, res, next) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-hashes'"
-  );
-  next();
-});
  
 app.use(express.static(path.join(__dirname, 'public')));
-
 
 // ── GET /api/routes — return saved routes (without checking works) ────────────
 app.get('/api/routes', (req, res) => {

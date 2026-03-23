@@ -11,9 +11,9 @@ module.exports = [
     icon: "🏠",
     colour: "#3b82f6",
     waypoints: [
-      // Example: London Liverpool Street → Canary Wharf
-      { lat: 51.5177, lng: -0.0810, label: "Liverpool Street" },
-      { lat: 51.5074, lng: -0.0278, label: "Canary Wharf" }
+
+      { lat: 51.50985035939234, lng: 0.2817808732650289, label: "Home" },
+      { lat:  51.53144046607705, lng: 0.12579143845562604, label: "Biffa" }
     ]
   },
   {
@@ -22,8 +22,8 @@ module.exports = [
     icon: "💼",
     colour: "#10b981",
     waypoints: [
-      { lat: 51.5074, lng: -0.0278, label: "Canary Wharf" },
-      { lat: 51.5177, lng: -0.0810, label: "Liverpool Street" }
+      { lat:  51.53144046607705, lng: 0.12579143845562604, label: "Biffa" },
+      { lat: 51.50985035939234, lng: 0.2817808732650289, label: "Home" }
     ]
   },
   {
