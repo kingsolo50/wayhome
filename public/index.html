@@ -713,6 +713,14 @@
         hour: '2-digit', minute: '2-digit', second: '2-digit'
       });
 
+      // Extract metrics data
+      const durationMin = data.duration?.durationMinutes || 0;
+      const distanceKm = data.duration?.distanceKm || 0;
+      const speed = data.duration?.estimatedSpeed || 0;
+      const trafficLevel = data.traffic?.level || 'unknown';
+      const trafficSeverity = data.traffic?.severity || 0;
+      const trafficFactors = data.traffic?.factors || [];
+
       const metricsHtml = `
         <div class="route-metrics">
           <div class="metric-box">
