@@ -387,11 +387,152 @@
     /* ── Divider ─────────────────────────────────────────────────────────── */
     .divider { height: 1px; background: var(--border); margin: 40px 0 32px; }
 
-    /* ── Responsive ──────────────────────────────────────────────────────── */
+    /* ── Route metrics (Duration & Traffic) ──────────────────────────────── */
+    .route-metrics {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .metric-box {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      flex: 1; min-width: 180px;
+    }
+    .metric-icon { font-size: 1.4rem; }
+    .metric-content { display: flex; flex-direction: column; }
+    .metric-label {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .metric-value {
+      font-family: var(--font-disp);
+      font-size: 1.2rem;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+    .metric-sub {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+
+    /* ── Traffic status badge ────────────────────────────────────────────── */
+    .traffic-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .traffic-badge.free { background: #0a1a10; color: var(--green); }
+    .traffic-badge.light { background: #1a1510; color: #f59e0b; }
+    .traffic-badge.moderate { background: #1f1409; color: #f59e0b; }
+    .traffic-badge.heavy { background: #451a1a; color: var(--red); }
+    .traffic-badge.severe { background: #451a1a; color: var(--red); }
+    .traffic-badge.unknown { background: var(--surface2); color: var(--muted); }
+
+    /* ── Congestion Hotspots ──────────────────────────────────────────────── */
+    .hotspots-section {
+      margin-top: 24px;
+      margin-bottom: 24px;
+    }
+    .hotspots-title {
+      font-family: var(--font-disp);
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .hotspots-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .hotspot-item {
+      background: var(--surface2);
+      border-left: 4px solid;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: start;
+    }
+    .hotspot-item.high { border-left-color: var(--red); }
+    .hotspot-item.medium { border-left-color: var(--amber); }
+    .hotspot-item.low { border-left-color: var(--green); }
+
+    .hotspot-marker {
+      font-size: 1.4rem;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    .hotspot-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .hotspot-location {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .hotspot-details {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .hotspot-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .hotspot-works {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      margin-top: 6px;
+      padding: 6px 8px;
+      background: rgba(0,0,0,0.3);
+      color: var(--text);
+      max-height: 80px;
+      overflow-y: auto;
+    }
+
+    .hotspot-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+    }
+    .hotspot-severity {
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+    .hotspot-item.high .hotspot-severity { color: var(--red); }
+    .hotspot-item.medium .hotspot-severity { color: var(--amber); }
+    .hotspot-item.low .hotspot-severity { color: var(--green); }
+
+    /* ── Responsive ──────────────────────────────────────────────────────– */
     @media (max-width: 600px) {
       header { padding: 20px 18px; flex-wrap: wrap; }
       .check-all-btn { width: 100%; justify-content: center; }
       main { padding: 24px 14px 60px; }
+      .route-metrics { flex-direction: column; }
+      .metric-box { flex: 1; }
     }
   </style>
 </head>
@@ -572,6 +713,60 @@
         hour: '2-digit', minute: '2-digit', second: '2-digit'
       });
 
+      const metricsHtml = `
+        <div class="route-metrics">
+          <div class="metric-box">
+            <div class="metric-icon">⏱️</div>
+            <div class="metric-content">
+              <div class="metric-label">Estimated Duration</div>
+              <div class="metric-value">${durationMin}min</div>
+              <div class="metric-sub">${distanceKm}km @ ${speed}km/h</div>
+            </div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-icon">🚦</div>
+            <div class="metric-content">
+              <div class="metric-label">Traffic Status</div>
+              <div class="traffic-badge ${trafficLevel}">
+                ${trafficLevel === 'free' ? '✅' : trafficLevel === 'light' ? '🟡' : trafficLevel === 'moderate' ? '🟠' : trafficLevel === 'heavy' ? '🔴' : trafficLevel === 'severe' ? '🔴' : '⚪'}
+                ${trafficLevel.toUpperCase()}
+              </div>
+              <div class="metric-sub">Score: ${trafficSeverity}/100</div>
+            </div>
+          </div>
+        </div>
+        ${trafficFactors.length > 0 ? `<div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:16px;">Factors: ${trafficFactors.join(' · ')}</div>` : ''}
+      `;
+
+      // Build hotspots HTML
+      const hotspotsHtml = data.hotspots && data.hotspots.length > 0 ? `
+        <div class="hotspots-section">
+          <div class="hotspots-title">📍 Congested Areas on Route</div>
+          <div class="hotspots-list">
+            ${data.hotspots.map((hotspot, i) => `
+              <div class="hotspot-item ${hotspot.severity}">
+                <div class="hotspot-marker">${hotspot.severity === 'high' ? '🔴' : hotspot.severity === 'medium' ? '🟠' : '🟡'}</div>
+                <div class="hotspot-info">
+                  <div class="hotspot-location">${hotspot.lat.toFixed(4)}, ${hotspot.lng.toFixed(4)}</div>
+                  <div class="hotspot-details">
+                    <div class="hotspot-detail-item">📏 ${hotspot.distFromStart.toFixed(1)}km from start</div>
+                    <div class="hotspot-detail-item">🚧 ${hotspot.workCount} roadwork${hotspot.workCount > 1 ? 's' : ''}</div>
+                  </div>
+                  ${hotspot.works.length > 0 ? `
+                    <div class="hotspot-works">
+                      ${hotspot.works.map(w => `<div>• ${w.road}: ${w.description.substring(0, 60)}${w.description.length > 60 ? '...' : ''}</div>`).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="hotspot-meta">
+                  <div class="hotspot-severity">${hotspot.severity}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : '';
+
       if (data.total === 0) {
         return `
           <div class="results-header">
@@ -580,6 +775,7 @@
             </div>
             <div class="results-meta">Checked at ${checkedAt}</div>
           </div>
+          ${metricsHtml}
           <div class="all-clear">
             <div class="all-clear-icon">✅</div>
             <div class="all-clear-title">ALL CLEAR</div>
@@ -619,6 +815,8 @@
           </div>
           <div class="results-meta">Checked at ${checkedAt} · ${data.total} works found</div>
         </div>
+        ${metricsHtml}
+        ${hotspotsHtml}
         ${chips}
         <div class="works-list">${workItems}</div>`;
     }).join('<div class="divider"></div>');

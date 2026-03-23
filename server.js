@@ -33,7 +33,19 @@ app.get('/api/check/:routeId', async (req, res) => {
   console.log(chalk.cyan(`[check]`) + ` Checking roadworks for "${route.name}"…`);
   try {
     const result = await checkRoadworks(route);
+    const congestionEmoji = {
+      'free': '🟢',
+      'light': '🟡',
+      'moderate': '🟠',
+      'heavy': '🔴',
+      'severe': '🔴',
+      'unknown': '⚪'
+    }[result.traffic?.level] || '⚪';
+    
     console.log(chalk.green(`[done]`) + `  ${result.total} works found (${result.high} high, ${result.medium} medium, ${result.low} low)`);
+    console.log(chalk.blue(`[route]`) + `  ${result.duration.durationMinutes}min (${result.duration.distanceKm}km @ ${result.duration.estimatedSpeed}km/h)`);
+    console.log(chalk.gray(`[traffic]`) + ` ${congestionEmoji} ${result.traffic.level} (score: ${result.traffic.severity}/100)`);
+    
     res.json(result);
   } catch (err) {
     console.error(chalk.red('[error]'), err.message);
