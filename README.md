@@ -48,8 +48,7 @@ Add as many waypoints as you need to accurately trace your route. Works within *
 │                                                         │
 │  2. BUTTON PRESS ──►  GET /api/check/:routeId           │
 │                                                         │
-│  3. DATA FETCH   ──►  Three parallel sources:           │
-│                       ├─ One.Network (streetworks)      │
+│  3. DATA FETCH   ──►  Parallel sources (cached 5 min):  │
 │                       ├─ National Highways DATEX II     │
 │                       └─ TfL (London only)              │
 │                                                         │
@@ -65,9 +64,10 @@ Add as many waypoints as you need to accurately trace your route. Works within *
 
 | Source | Coverage | Auth needed |
 |---|---|---|
-| **One.Network** | All UK streetworks | None (public API) |
-| **National Highways** | Motorways & major A-roads | None (open data) |
-| **TfL** | Greater London roads | None (public API) |
+| **National Highways** | Motorways & major A-roads (England) | Free key: set `NH_API_KEY` (optional `NH_API_URL`) |
+| **TfL** | Greater London roads (works & closures) | None (public API) |
+
+Only works that are active right now (start date passed, end date not yet reached) are reported; flagged closures are always 🔴 HIGH.
 
 ---
 
