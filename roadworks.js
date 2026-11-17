@@ -299,6 +299,7 @@ async function checkRoadworks(route) {
     high: nearby.filter(w => w.severity === 'high').length,
     medium: nearby.filter(w => w.severity === 'medium').length,
     low: nearby.filter(w => w.severity === 'low').length,
+    closures: nearby.filter(w => w.closure || w.severity === 'high'),
     works: nearby,
     duration: duration,
     traffic: congestion,

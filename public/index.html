@@ -336,6 +336,13 @@
     }
     .work-meta-item span { color: var(--text); }
 
+    .closure-banner {
+      background: #451a1a; border: 1px solid var(--red); border-radius: 6px;
+      padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem;
+    }
+    .closure-banner-title { color: var(--red); font-weight: 700; margin-bottom: 6px; }
+    .closure-banner li { margin: 4px 0 0 18px; }
+
     /* ── No works banner ─────────────────────────────────────────────────── */
     .all-clear {
       background: #0a1a10;
@@ -658,7 +665,11 @@
       meta.textContent = `Last checked: ${new Date().toLocaleTimeString('en-GB')}`;
 
       // Toast notification
-      if (data.high > 0) {
+      if (data.closures?.length) {
+        const c = data.closures[0];
+        showToast(`🚫 ${data.routeName}`,
+          `${data.closures.length} road closure(s): ${c.road}, ${fmtWhen(c.startDate)} → ${fmtWhen(c.endDate)}`, 'warning');
+      } else if (data.high > 0) {
         showToast(`⚠️ ${data.routeName}`,
           `${data.high} HIGH severity works on your route!`, 'warning');
       } else if (data.total > 0) {
@@ -701,7 +712,23 @@
   }
 
   // ── Render results panel ───────────────────────────────────────────────────
-  function renderResults(results) {
+  // Day and time, e.g. "Mon 17 Nov, 21:00"
+    function fmtWhen(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (isNaN(d)) return '—';
+      return d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function closureBannerHtml(closures) {
+      if (!closures?.length) return '';
+      return `<div class="closure-banner">
+        <div class="closure-banner-title">🚫 ${closures.length} road closure${closures.length > 1 ? 's' : ''} on your route</div>
+        <ul>${closures.map(c => `<li><b>${c.road}</b> — ${fmtWhen(c.startDate)} → ${fmtWhen(c.endDate)}</li>`).join('')}</ul>
+      </div>`;
+    }
+
+    function renderResults(results) {
     const panel = document.getElementById('results-panel');
     const inner = document.getElementById('results-inner');
     panel.classList.add('visible');
@@ -799,8 +826,8 @@
         </div>`;
 
       const workItems = data.works.map((w, i) => {
-        const start = w.startDate ? new Date(w.startDate).toLocaleDateString('en-GB') : '—';
-        const end   = w.endDate   ? new Date(w.endDate).toLocaleDateString('en-GB')   : '—';
+        const start = fmtWhen(w.startDate);
+        const end   = fmtWhen(w.endDate);
         return `
           <div class="work-item ${w.severity}" style="animation-delay:${i * 0.05}s">
             <div><span class="work-severity">${w.severity}</span></div>
@@ -824,6 +851,7 @@
           <div class="results-meta">Checked at ${checkedAt} · ${data.total} works found</div>
         </div>
         ${metricsHtml}
+        ${closureBannerHtml(data.closures)}
         ${hotspotsHtml}
         ${chips}
         <div class="works-list">${workItems}</div>`;
